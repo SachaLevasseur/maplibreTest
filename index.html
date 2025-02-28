@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8' />
+    <title>MaplibreGL</title>
+
+    <!-- JQUERY pour les API -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+
+    <script src="https://unpkg.com/maplibre-gl@^5.1.1/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@^5.1.1/dist/maplibre-gl.css" rel="stylesheet" />
+
+
+    <style>
+        #bandeau {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            background: lightcoral;
+            min-height: 75px;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-size: 15px;
+            text-align: center;
+        }
+
+        #map {
+            position: absolute;
+            top: 75px;
+            bottom: 0;
+            width: 100%;
+        }
+
+        #menu_couche {
+            position: absolute;
+            font-family: 'Calibri';
+            top: 9%;
+            left: 60px;
+            background: white;
+            padding: 10px;
+            z-index: 1000;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .PopupParcRelais .maplibregl-popup-content {
+            /*Avec l’espace (.PopupParcRelais .mapboxgl-popup-content) → cible un élément .mapboxgl-popup-content qui est contenu dans un .PopupParcRelais. ✅
+            
+            Sans espace (.PopupParcRelais.mapboxgl-popup-content) → cible un élément qui a les deux classes en même temps. ❌*/
+            background-color: black;
+            color: white;
+            opacity: 0.7;
+            font-family: 'Poppins';
+            font-size: 14px;
+            padding: 8px;
+        }
+
+        .PopupBus .maplibregl-popup-content {
+            background-color: lightblue;
+            color: black;
+            opacity: 0.7;
+            font-family: 'Poppins';
+            font-size: 14px;
+            padding: 8px;
+        }
+
+
+
+
+        .menu {
+            font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            position: absolute;
+            width: 200px;
+            bottom: 3%;
+            right: 2%;
+            padding: 10px;
+        }
+
+        .menu .menu_overlay {
+            background-color: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
+            border-radius: 3px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .menu_overlay fieldset {
+            border: none;
+            padding: 0;
+            margin: 0 0 10px;
+        }
+
+        .menu_overlay .categoryLabel {
+            display: block;
+            font-weight: bold;
+            margin: 0 0 5px;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div id="bandeau"><h1>SITE MAPLIBRE</h1></div>
+
+    <div id='map'></div>
+
+    <div id="menu_couche">
+        <label for="selectstyle">Choisir un fond de carte :</label>
+        <select id="selectstyle">
+            <!--
+            <option value="mapbox://styles/mapbox/streets-v11">Mapbox Streets</option>
+            <option value="mapbox://styles/charly-ciant/cm736h7cc00du01qv8o332ww3">Perso</option>
+             -->
+             <option value="https://openmaptiles.geo.data.gouv.fr/styles/positron/style.json">Positron Etalab</option>
+             <option value="https://openmaptiles.geo.data.gouv.fr/styles/osm-bright/style.json">Bright Etalab</option>
+            <option value="https://openmaptiles.geo.data.gouv.fr/styles/dark-matter/style.json">Dark Matter Etalab</option>
+            <option value="https://openmaptiles.geo.data.gouv.fr/styles/maptiler-toner/style.json">Toner Etalab</option>
+            <option value="">Satellite IGN</option>
+        </select>
+
+
+        <hr>
+        <div>
+            <button id='Gare'>Gare</button>
+            <button id='Maison'>Maison</button>
+            <button id='SalleSIGAT'>Salle SIGAT</button>
+        </div>
+
+    </div>
+
+
+
+
+
+    <div class='menu'>
+        <div class='menu_overlay'>
+            <fieldset>
+                <label class="categoryLabel">Données Réferentielles</label>
+
+                <div>
+                    <input type="checkbox" id="RoutesCB" value="Routes" onchange="switchlayer('Routes')" checked />
+                    <label for="RoutesCB">Routes</label>
+                </div>
+
+                <div>
+                    <input type="checkbox" id="HydroCB" value="Hydro" onchange="switchlayer('Hydro')" checked />
+                    <label for="HydroCB">Hydrologie</label>
+                </div>
+
+                <div>
+                    <input type="checkbox" id="batimentsCB" value="batiments" onchange="switchlayer('batiments')" checked/>
+                    <label for="batimentsCB">Batiments</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="CadastreCB" value="Cadastre" onchange="switchlayer('Cadastre')" />
+                    <label for="CadastreCB">Cadastre>1000m²</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="Contour_35238CB" value="Contour_35238"
+                        onchange="switchlayer('Contour_35238')" />
+                    <label for="Contour_35238CB">Rennes</label>
+                </div>
+            </fieldset>
+
+            <hr>
+            <fieldset>
+                <label class="categoryLabel">Transport</label>
+                <div>
+                    <input type="checkbox" id="VLSCB" value="VLS" onchange="switchlayer('VLS')" />
+                    <label for="VLSCB">Vélos libre service</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="stopbusCB" value="stopbus" onchange="switchlayer('stopbus')" />
+                    <label for="stopbusCB">Arrêts de bus</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="ParcrelaisCB" value="Parcrelais" onchange="switchlayer('Parcrelais')"
+                        checked />
+                    <label for="ParcrelaisCB">Parcs relais</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="metroCB" value="metro" onchange="switchlayer('metro')" />
+                    <label for="metroCB">Lignes de métro</label>
+                </div>
+            </fieldset>
+
+            <hr>
+            <fieldset>
+                <label class="categoryLabel">Autres</label>
+                <div>
+                    <input type="checkbox" id="biblioCB" value="biblio" onchange="switchlayer('biblio')" />
+                    <label for="biblioCB">Bibliothèque</label>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+
+
+    <script>
+
+        // Configuration de la carte
+        var map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://openmaptiles.geo.data.gouv.fr/styles/positron/style.json', // Fond de carte
+            center: [-1.677095, 48.110319], // lat/long
+            zoom: 12, // zoom
+            pitch: 0, // Inclinaison
+            bearing: 0 // Rotation
+        });
+
+        // Fonction pour ajouter la couche des routes
+        function AjoutCouches() {
+            // flux mapbox
+            map.addSource('openmaptilesSource', {
+                type: 'vector',
+                url: 'https://openmaptiles.geo.data.gouv.fr/data/france-vector.json'
+            });
+
+
+            // tuiles vectorielles
+            map.addSource('Cadastre', {
+                type: 'vector',
+                url: 'https://openmaptiles.geo.data.gouv.fr/data/cadastre.json'
+            });
+
+            map.addSource('BDTOPO', {
+                type: 'vector',
+                url: 'https://data.geopf.fr/tms/1.0.0/BDTOPO/metadata.json',
+                minzoom: 15,
+                maxzoom: 19
+            });
+
+
+
+
+            map.addLayer({
+                "id": "Routes",
+                "type": "line",
+                "source": "openmaptilesSource",
+                "layout": { 'visibility': 'visible' },
+                "source-layer": "transportation",
+                "paint": { "line-color": "red", "line-width": 0.8 },
+                "filter": ['all', ['in', 'class', 'trunk', 'motorway', 'primary']]
+            });
+
+            map.addLayer({
+                "id": "Hydro",
+                "type": "fill",
+                "source": "openmaptilesSource",
+                "layout": { 'visibility': 'visible' },
+                "source-layer": "water",
+                "paint": { "fill-color": "blue"}
+            });
+
+            map.addLayer({
+                'id': 'batiments',
+                'type': 'fill-extrusion',
+                'source': 'BDTOPO',
+                'source-layer': 'batiment',
+                "layout": { 'visibility': 'visible' },
+                'paint': {
+                    'fill-extrusion-color': [
+                        'match', ['get', 'usage_1'],
+                        'Agricole', '#8dd3c7',
+                        'Annexe', '#ffffb3',
+                        'Résidentiel', '#bebada',
+                        'Industriel', '#fb8072',
+                        'Religieux', '#80b1d3',
+                        'Sportif', '#fdb462',
+                        'Indifférencié', '#b3de69',
+                        'Commercial et services', '#fccde5',
+                        '#ccc'
+                    ],
+                    'fill-extrusion-height': { 'type': 'identity', 'property': 'hauteur' },
+                    'fill-extrusion-opacity': 0.90,
+                    'fill-extrusion-base': 0
+                }
+            });
+
+            map.addLayer({
+                'id': 'Cadastre',
+                'type': 'line',
+                'source': 'Cadastre',
+                'source-layer': 'parcelles',
+                'layout': { 'visibility': 'none' },
+                'paint': { 'line-color': '#000000' },
+                'minzoom': 16, 'maxzoom': 23,
+                'filter': ['>', 'contenance', 1000]
+            });
+
+
+
+
+
+            // ISSU D'UNE API, NECESSITE JQUERY ET N'UTILISE PAS MAP.ADDSOURCE
+            // Contours communes
+            const communes = [
+                { code: '35278', name: 'Saint-Grégoire' },
+                { code: '35051', name: 'Cesson-Sévigné' },
+                { code: '35238', name: 'Rennes' }
+            ];
+            communes.forEach(commune => {
+                var dataCadastre = `https://apicarto.ign.fr/api/cadastre/commune?code_insee=${commune.code}`;
+
+                jQuery.when(jQuery.getJSON(dataCadastre)).done(function (json) {
+                    json.features.forEach(feature => {
+                        feature.geometry = feature.geometry; // la géométrie de la couche est égale au champ géométrie de chaque feature recupéré
+                    });
+
+                    map.addLayer({
+                        'id': `Contour_${commune.code}`,
+                        'type': 'line',
+                        'source': { 'type': 'geojson', 'data': json },
+                        'paint': {
+                            'line-color': 'black',
+                            'line-width': 2.5
+                        },
+                        'layout': { 'visibility': 'none' }
+                    });
+                });
+            });
+
+
+            // ARRETS DE BUS
+            const ville = "Rennes";
+            $.getJSON(`https://overpass-api.de/api/interpreter?data=[out:json];area[name="${ville}"]->.searchArea;(node["highway"="bus_stop"](area.searchArea););out center;`,
+                function (data) {
+                    var geojsonstopbus = {
+                        type: 'FeatureCollection',
+                        features: data.elements.map(function (element) {
+                            return {
+                                type: 'Feature',
+                                geometry: { type: 'Point', coordinates: [element.lon, element.lat] },
+                                properties: {}
+                            };
+                        })
+                    };
+                    map.addSource('stopbus_source', {
+                        type: 'geojson',
+                        data: geojsonstopbus
+                    });
+                    map.addLayer({
+                        'id': 'stopbus',
+                        'type': 'circle',
+                        'source': 'stopbus_source',
+                        "paint": {
+                            'circle-radius': {
+                                 'base': 1.5, 'stops': [[13, 2], [22, 60]] 
+                                }, 
+                            'circle-color': 'magenta', 
+                        },
+                        'layout': { 'visibility': 'none' }
+                    });
+                });
+            
+
+
+            // Parcs relais
+            $.getJSON('https://data.rennesmetropole.fr/api/explore/v2.1/catalog/datasets/tco-parcsrelais-star-etat-tr/records?limit=20',
+                function (data) {
+                    var geojsonData4 = {
+                        type: 'FeatureCollection',
+                        features: data.results.map(function (element) {
+                            return {
+                                type: 'Feature',
+                                geometry: {  // le json n'a pas de champ geometry mais possede les coordonnees x et y, on vient crée un point avec ces coords
+                                    type: 'Point',
+                                    coordinates: [element.coordonnees.lon, element.coordonnees.lat]
+                                },
+                                properties: {
+                                    name: element.nom,
+                                    capacity: element.jrdinfosoliste
+                                }
+                            };
+
+                        })
+                    };
+                    map.addLayer({
+                        'id': 'Parcrelais',
+                        'layout': { 'visibility': 'visible' },
+                        'type': 'circle',
+                        'source': {
+                            'type': 'geojson',
+                            'data': geojsonData4
+                        },
+                        'paint': {
+                            'circle-opacity': 0.8,
+                            'circle-stroke-width': 0.5,
+                            'circle-stroke-color': '#000000',
+                            'circle-color': 'orange',
+                            'circle-radius': {
+                                property: 'capacity', type: 'exponential',
+                                stops: [[1, 7], [400, 22]]
+                            }
+                        }
+                    });
+                });
+
+
+
+            // Stations velos
+            $.getJSON('https://data.explore.star.fr/api/explore/v2.1/catalog/datasets/vls-stations-etat-tr/records?limit=60',
+                function (data) {
+                    var geojsonVLS = {
+                        type: 'FeatureCollection',
+                        features: data.results.map(function (element) {
+                            return {
+                                type: 'Feature',
+                                geometry: {  // le json n'a pas de champ geometry mais possede les coordonnees x et y, on vient crée un point avec ces coords
+                                    type: 'Point',
+                                    coordinates: [element.coordonnees.lon, element.coordonnees.lat]
+                                },
+                                properties: {
+                                    nom: element.nom,
+                                    emplacements: element.nombreemplacementsdisponibles,
+                                    velos: element.nombrevelosdisponibles
+                                }
+                            };
+
+                        })
+                    };
+                    map.addLayer({
+                        'id': 'VLS',
+                        'layout': { 'visibility': 'none' },
+                        'type': 'circle',
+                        'source': {
+                            'type': 'geojson',
+                            'data': geojsonVLS
+                        },
+                        'paint': {
+                            'circle-opacity': 0.4,
+                            'circle-blur': 0.7,
+                            'circle-color': 'green',
+                            'circle-stroke-width': 0.1,
+                            'circle-stroke-color': '#ffffff',
+                            'circle-radius': {
+                                property: 'velos', type: 'exponential',
+                                stops: [[1, 4], [30, 15]]
+                            }
+                        }
+                    });
+                });
+
+
+
+            // BUS EN TEMPS REEL
+            $.getJSON('https://data.explore.star.fr/api/explore/v2.1/catalog/datasets/tco-bus-vehicules-position-tr/records?where=etat%3D%22En%20ligne%22&limit=100',
+                function (data) {
+                    var geojsonBUS = {
+                        type: 'FeatureCollection',
+                        features: data.results.map(function (element) {
+                            return {
+                                type: 'Feature',
+                                geometry: {  // le json n'a pas de champ geometry mais possede les coordonnees x et y, on vient crée un point avec ces coords
+                                    type: 'Point',
+                                    coordinates: [element.coordonnees.lon, element.coordonnees.lat]
+                                },
+                                properties: {
+                                    idligne: element.idligne,
+                                    nomligne: element.nomcourtligne,
+                                    retard: element.ecartsecondes
+                                }
+                            };
+
+                        })
+                    };
+                    map.addLayer({
+                        'id': 'BUS',
+                        'layout': { 'visibility': 'none' },
+                        'type': 'circle',
+                        'source': {
+                            'type': 'geojson',
+                            'data': geojsonBUS
+                        },
+                        'paint': { 'circle-color': 'red' }
+                    });
+                });
+
+
+
+            // BIBLIO A RENNES
+            $.getJSON(`https://overpass-api.de/api/interpreter?data=[out:json];area[name="${ville}"]->.searchArea;(node["amenity"="library"](area.searchArea););out center;`,
+                function (data) {
+                    var geojsonBiblio = {
+                        type: 'FeatureCollection',
+                        features: data.elements.map(function (element) {
+                            return {
+                                type: 'Feature',
+                                geometry: { type: 'Point', coordinates: [element.lon, element.lat] },
+                                properties: {}
+                            };
+                        })
+                    };
+                    map.addSource('biblio_source', {
+                        type: 'geojson',
+                        data: geojsonBiblio
+                    });
+                    map.addLayer({
+                        'id': 'biblio',
+                        'type': 'circle',
+                        'source': 'biblio_source',
+                        'paint': {
+                            'circle-color': 'blue',
+                            'circle-radius': 5
+                        },
+                        'layout': { 'visibility': 'none' }
+                    });
+                });
+
+
+            // LIGNES METRO
+            $.getJSON(`https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A25%5D%3B%0A%0Away%5B%22railway%22%3D%22subway%22%5D%2848.055365325244466%2C-1.7445971203319348%2C48.15577995903571%2C-1.5634943676463875%29%3B%0A%0A%0Aout%20geom%3B`,
+                function (data) {
+                    var geojsonMetro = {
+                        type: 'FeatureCollection',
+                        features: data.elements.map(function (element) {
+                            return {
+                                type: 'Feature',
+                                geometry: {
+                                    type: 'LineString',
+                                    coordinates: element.geometry.map(node => [node.lon, node.lat])
+                                },
+                                properties: {}
+                            };
+                        })
+                    };
+                    map.addSource('source_metro', {
+                        type: 'geojson',
+                        data: geojsonMetro
+                    });
+                    map.addLayer({
+                        'id': 'metro',
+                        'type': 'line',
+                        'source': 'source_metro',
+                        'layout': { 'visibility': 'none' },
+                        'paint': {
+                            'line-color': '#ff0000', // Rouge pour les lignes de métro
+                            'line-width': 3
+                        }
+                    });
+                });
+
+
+
+
+
+        }
+
+
+        // Gestion du changement de style
+        document.getElementById('selectstyle').addEventListener('change', function () {
+            map.setStyle(this.value);
+            map.once('style.load', AjoutCouches); // Recharge les couches après changement de style
+        });
+
+
+        
+
+        // Ajout Marqueur
+        const marker1 = new maplibregl.Marker({ 'layout': { 'visibility': 'none' } })
+            .setLngLat([-1.701317, 48.121715])
+            .addTo(map);
+
+        var popup1 = new maplibregl.Popup({ offset: 25, maxWidth: "500px" })
+            .setHTML("<h2>Le Métronome</h2><h4>🍟 On mange pour pas cher et c'est pas si mal</h4><hr><img src='https://ephoto.nuonet.fr/link/xpk19jjydvmcbkw.jpeg' width='320px'>");
+
+        marker1.setPopup(popup1);
+
+        const marker2 = new maplibregl.Marker()
+            .setLngLat([-1.679319, 48.111361])
+            .addTo(map);
+
+        var popup2 = new maplibregl.Popup({ offset: 25, maxWidth: "500px" })
+            .setHTML("<h2>Place de la mairie</h2><h4>Des manifs tout les mardi</h4><hr><img src='https://media.ouest-france.fr/v1/pictures/MjAxNTExNmE1MWY4NDlmZGU3OGViODFkN2FlYjIwMDYzZWU3YTQ?width=1260&height=708&focuspoint=50%2C25&cropresize=1&client_id=bpeditorial&sign=82e214413b8f4475c402135e5962fa70b9e8acd892df4ffcbc6130a14b9004fa' width='320px'>");
+
+        marker2.setPopup(popup2);
+
+        
+
+
+        // Boutons de navigation
+        var nav = new maplibregl.NavigationControl();
+        map.addControl(nav, 'top-left');
+
+        // Ajout Echelle cartographique
+        map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }));
+
+        // Bouton de géolocalisation
+        map.addControl(new maplibregl.GeolocateControl({
+            positionOptions: { enableHighAccuracy: true },
+            trackUserLocation: true,
+            showUserHeading: true
+        }));
+
+
+
+
+        //Interactivité CLICK
+        map.on('click', function (e) {
+            var features = map.queryRenderedFeatures(e.point, { layers: ['stopbus'] });
+            if (!features.length) {
+                return;
+            }
+            var feature = features[0];
+            var popup = new maplibregl.Popup({ className: "PopupBus", offset: [0, -15] })
+                .setLngLat(feature.geometry.coordinates)
+                .setHTML('<h3>' + feature.properties.nom + '</h3><hr><p>'
+                    + "Mobilier : " + feature.properties.mobilier + '</p><p>'
+                    + "Accessibilité PMR : " + feature.properties.estaccessiblepmr + '</p>')
+                .addTo(map);
+        });
+        map.on('mousemove', function (e) {
+            var features = map.queryRenderedFeatures(e.point, { layers: ['stopbus'] });
+            map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
+        });
+
+
+        //Interactivité CLICK
+        map.on('click', function (e) {
+            var features = map.queryRenderedFeatures(e.point, { layers: ['VLS'] });
+            if (!features.length) {
+                return;
+            }
+            var feature = features[0];
+            var popup = new maplibregl.Popup({ offset: [0, -15] })
+                .setLngLat(feature.geometry.coordinates)
+                .setHTML('<h2>' + feature.properties.nom + '</h2><hr><h3>Nb emplacements : '
+                    + feature.properties.emplacements + '</h3><h3>Nb vélos : '
+                    + feature.properties.velos + '</h3>')
+                .addTo(map);
+        });
+        map.on('mousemove', function (e) {
+            var features = map.queryRenderedFeatures(e.point, { layers: ['stopbus'] });
+            map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
+        });
+
+
+        //Interactivité HOVER
+        var popup = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+            className: "PopupParcRelais"
+        });
+        map.on('mousemove', function (e) {
+            var features = map.queryRenderedFeatures(e.point, { layers: ['Parcrelais'] });
+            // Change the cursor style as a UI indicator.
+            map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
+            if (!features.length) {
+                popup.remove();
+                return;
+            }
+            var feature = features[0];
+            popup.setLngLat(feature.geometry.coordinates)
+                .setHTML('<h4><b>' + feature.properties.name + '</b></h4><hr><p>' + feature.properties.capacity + ' places disponibles</p>')
+                .addTo(map);
+        });
+
+
+
+
+        switchlayer = function (lname) {
+            if (document.getElementById(lname + "CB").checked) {
+                map.setLayoutProperty(lname, 'visibility', 'visible');
+            } else {
+                map.setLayoutProperty(lname, 'visibility', 'none');
+            }
+        };
+
+
+
+
+        // Configuration onglets geographiques, boutons pour se tp à des endroits
+        document.getElementById('Gare').addEventListener('click', function () {
+            map.flyTo({
+                zoom: 17,
+                center: [-1.672269, 48.10311],
+                pitch: 50,
+                bearing: -200
+            });
+        });
+        document.getElementById('SalleSIGAT').addEventListener('click', function () {
+            map.flyTo({
+                zoom: 18.5,
+                center: [-1.70259, 48.11848],
+                pitch: 50,
+                bearing: -200
+            });
+        });
+        document.getElementById('Maison').addEventListener('click', function () {
+            map.flyTo({
+                zoom: 18.5,
+                center: [-1.704305, 48.114942],
+                pitch: 50,
+                bearing: -200
+            });
+        });
+        
+
+
+
+        // Ajout initial de la couche Routes
+        map.on('load', AjoutCouches);
+
+
+    </script>
+
+</body>
+
+</html>
+
+
+
+<!--    
+Routes ✅
+Hydro ✅
+batiments ✅ zoom 15
+Arrets
+Cadastre
+Contour_${commune.code} ✅
+Parcrelais ✅
+VLS
+BUS
+biblio
+metro
+-->
